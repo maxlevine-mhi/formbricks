@@ -128,9 +128,11 @@ RUN chmod -R 755 ./node_modules/@paralleldrive/cuid2
 
 # Startup bootstrap script (FORMBRICKS_BOOTSTRAP_*) is bundled into
 # packages/database/dist/scripts/bootstrap-admin-and-org.cjs and imports
-# bcryptjs as an external dependency. Copy the package's resolved install
-# so the script can resolve it at container start.
-COPY --from=installer /app/packages/database/node_modules/bcryptjs ./node_modules/bcryptjs
+# bcryptjs as an external dependency. Under pnpm's hoisted layout (the
+# Formbricks workspace uses `node-linker=hoisted`), transitive deps live
+# at the workspace root's node_modules, not under each package — so we
+# copy from /app/node_modules/bcryptjs, not /app/packages/database/...
+COPY --from=installer /app/node_modules/bcryptjs ./node_modules/bcryptjs
 RUN chmod -R 755 ./node_modules/bcryptjs
 
 # Runtime migrations import uuid v7 from the database package, so copy the
