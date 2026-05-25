@@ -126,6 +126,13 @@ RUN chown -R nextjs:nextjs ./node_modules/.prisma && chmod -R 755 ./node_modules
 COPY --from=installer /app/node_modules/@paralleldrive/cuid2 ./node_modules/@paralleldrive/cuid2
 RUN chmod -R 755 ./node_modules/@paralleldrive/cuid2
 
+# Startup bootstrap script (FORMBRICKS_BOOTSTRAP_*) is bundled into
+# packages/database/dist/scripts/bootstrap-admin-and-org.cjs and imports
+# bcryptjs as an external dependency. Copy the package's resolved install
+# so the script can resolve it at container start.
+COPY --from=installer /app/packages/database/node_modules/bcryptjs ./node_modules/bcryptjs
+RUN chmod -R 755 ./node_modules/bcryptjs
+
 # Runtime migrations import uuid v7 from the database package, so copy the
 # database package's resolved install instead of the repo-root hoisted version.
 COPY --from=installer /app/packages/database/node_modules/uuid ./node_modules/uuid
