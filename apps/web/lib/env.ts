@@ -190,14 +190,34 @@ const parsedEnv = createEnv({
     AI_AZURE_API_KEY: z.string().optional(),
     AI_AZURE_API_VERSION: z.string().optional(),
     AI_AZURE_RESOURCE_NAME: z.string().optional(),
-    CUBEJS_API_SECRET: z.string().trim().min(1),
-    CUBEJS_API_URL: z.url(),
+    // Cube.dev analytics endpoint — required for the EE analysis module
+    // (apps/web/modules/ee/analysis/api/lib/cube-client.ts), unused by
+    // self-hosted installs that don't enable that feature. Defaults
+    // kick in for unset/empty values so the env-schema passes; the
+    // unresolvable `.invalid` URL surfaces a network error at the call
+    // site if the EE module is ever invoked (better than a silent
+    // boot-time rejection that doesn't tell you which var is missing).
+    // A non-empty but malformed URL still rejects — that's a config bug
+    // worth flagging at boot.
+    CUBEJS_API_SECRET: z.preprocess(
+      emptyStringToUndefined,
+      z.string().trim().min(1).default("self-host-unused")
+    ),
+    CUBEJS_API_URL: z.preprocess(
+      emptyStringToUndefined,
+      z.url().default("http://cubejs-not-configured.invalid")
+    ),
     CUBEJS_JWT_AUDIENCE: ZOptionalNonEmptyString,
     CUBEJS_JWT_ISSUER: ZOptionalNonEmptyString,
     HTTP_PROXY: z.url().optional(),
     HTTPS_PROXY: z.url().optional(),
-    HUB_API_URL: z.url(),
-    HUB_API_KEY: z.string().trim().min(1),
+    // Formbricks-Hub telemetry endpoint — Cloud-only. Self-hosted installs
+    // don't ship metrics here; defaults kick in for unset/empty values
+    // and any downstream code that conditionally pings the .invalid URL
+    // will visibly fail rather than silently boot-reject. Same
+    // preprocess pattern as the Cube vars above.
+    HUB_API_URL: z.preprocess(emptyStringToUndefined, z.url().default("http://hub-not-configured.invalid")),
+    HUB_API_KEY: z.preprocess(emptyStringToUndefined, z.string().trim().min(1).default("self-host-unused")),
     IMPRINT_URL: z
       .url()
       .optional()
