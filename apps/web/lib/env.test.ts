@@ -129,45 +129,73 @@ describe("env", () => {
     expect(env.CUBEJS_JWT_ISSUER).toBe("formbricks-web");
   });
 
-  test("fails to load when the Cube API secret is missing", async () => {
+  // CUBEJS_API_* and HUB_API_* are Cloud-only telemetry endpoints. The
+  // schema previously required them, which broke self-hosted installs
+  // that never use the EE analysis module. They now carry self-host
+  // defaults so the env-load succeeds without them; if the EE analysis
+  // module is invoked, the unresolvable .invalid URL surfaces a network
+  // error at the call site rather than blocking boot.
+  test("falls back to the self-host default when the Cube API secret is missing", async () => {
     setTestEnv({
       CUBEJS_API_SECRET: undefined,
     });
 
-    await expect(import("./env")).rejects.toThrow("Invalid environment variables");
+    const { env } = await import("./env");
+
+    expect(env.CUBEJS_API_SECRET).toBe("self-host-unused");
   });
 
-  test("fails to load when the Cube API secret is empty", async () => {
+  test("falls back to the self-host default when the Cube API secret is empty", async () => {
     setTestEnv({
       CUBEJS_API_SECRET: "",
     });
 
-    await expect(import("./env")).rejects.toThrow("Invalid environment variables");
+    const { env } = await import("./env");
+
+    expect(env.CUBEJS_API_SECRET).toBe("self-host-unused");
   });
 
-  test("fails to load when the Cube API URL is missing", async () => {
+  test("falls back to the self-host default when the Cube API URL is missing", async () => {
     setTestEnv({
       CUBEJS_API_URL: undefined,
     });
 
-    await expect(import("./env")).rejects.toThrow("Invalid environment variables");
+    const { env } = await import("./env");
+
+    expect(env.CUBEJS_API_URL).toBe("http://cubejs-not-configured.invalid");
   });
 
-  test("fails to load when the Cube API URL is empty", async () => {
+  test("falls back to the self-host default when the Cube API URL is empty", async () => {
     setTestEnv({
       CUBEJS_API_URL: "",
     });
 
-    await expect(import("./env")).rejects.toThrow("Invalid environment variables");
+    const { env } = await import("./env");
+
+    expect(env.CUBEJS_API_URL).toBe("http://cubejs-not-configured.invalid");
   });
 
-  test("fails to load when the Cube API URL is invalid", async () => {
+  // Invalid-URL (non-empty, malformed) still rejects — the .default()
+  // only kicks in when the value is absent. A garbage URL is a config
+  // mistake the operator should know about.
+  test("fails to load when the Cube API URL is set but malformed", async () => {
     setTestEnv({
       CUBEJS_API_URL: "not-a-url",
       CUBEJS_API_SECRET: "cube-secret",
     });
 
     await expect(import("./env")).rejects.toThrow("Invalid environment variables");
+  });
+
+  test("validation error message names the failing field", async () => {
+    // Without this, operators see only "Invalid environment variables"
+    // with no hint which of ~80 vars is the culprit. ENCRYPTION_KEY is
+    // required + non-defaulted, so missing it is the simplest trigger.
+    setTestEnv({
+      ENCRYPTION_KEY: undefined,
+    });
+
+    await expect(import("./env")).rejects.toThrow(/ENCRYPTION_KEY/);
   });
 
   test("uses the default survey scheduling configuration when env vars are not set", async () => {

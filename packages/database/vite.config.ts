@@ -41,6 +41,7 @@ export default defineConfig(async (): Promise<UserConfig> => {
         input: {
           index: resolve(__dirname, "src/index.ts"),
           "scripts/apply-migrations": resolve(__dirname, "src/scripts/apply-migrations.ts"),
+          "scripts/bootstrap-admin-and-org": resolve(__dirname, "src/scripts/bootstrap-admin-and-org.ts"),
           "scripts/create-saml-database": resolve(__dirname, "src/scripts/create-saml-database.ts"),
           "scripts/migration-runner": resolve(__dirname, "src/scripts/migration-runner.ts"),
           "scripts/backfill-attribute-values": resolve(__dirname, "src/scripts/backfill-attribute-values.ts"),
@@ -65,6 +66,7 @@ export default defineConfig(async (): Promise<UserConfig> => {
           "zod-openapi",
           "@paralleldrive/cuid2",
           "uuid",
+          "bcryptjs",
         ],
       },
       emptyOutDir: true,

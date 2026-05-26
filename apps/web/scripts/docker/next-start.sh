@@ -58,6 +58,16 @@ fi
 echo "🗃️ Running SAML database setup..."
 run_with_timeout 60 "SAML database setup" node packages/database/dist/scripts/create-saml-database.js
 
+# Non-interactive admin + first-org bootstrap from FORMBRICKS_BOOTSTRAP_* env.
+# Script is a no-op when FORMBRICKS_BOOTSTRAP_EMAIL is unset, so the container
+# falls through to the interactive /setup/intro flow as before.
+echo "🚀 Running Formbricks bootstrap (no-op if FORMBRICKS_BOOTSTRAP_* env not set)..."
+## The .cjs bundle is invoked rather than .js so the script's
+## require.main === module self-detection lands on the CJS branch
+## (packages/database emits both bundle formats; the script's
+## isDirectInvocation covers both, but CJS is the simpler path).
+run_with_timeout 60 "Formbricks bootstrap" node packages/database/dist/scripts/bootstrap-admin-and-org.cjs
+
 echo "✅ Database setup completed"
 echo "🚀 Starting Next.js server..."
 exec node apps/web/server.js

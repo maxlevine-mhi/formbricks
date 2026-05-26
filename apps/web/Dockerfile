@@ -126,6 +126,15 @@ RUN chown -R nextjs:nextjs ./node_modules/.prisma && chmod -R 755 ./node_modules
 COPY --from=installer /app/node_modules/@paralleldrive/cuid2 ./node_modules/@paralleldrive/cuid2
 RUN chmod -R 755 ./node_modules/@paralleldrive/cuid2
 
+# Startup bootstrap script (FORMBRICKS_BOOTSTRAP_*) is bundled into
+# packages/database/dist/scripts/bootstrap-admin-and-org.cjs and imports
+# bcryptjs as an external dependency. Under pnpm's hoisted layout (the
+# Formbricks workspace uses `node-linker=hoisted`), transitive deps live
+# at the workspace root's node_modules, not under each package — so we
+# copy from /app/node_modules/bcryptjs, not /app/packages/database/...
+COPY --from=installer /app/node_modules/bcryptjs ./node_modules/bcryptjs
+RUN chmod -R 755 ./node_modules/bcryptjs
+
 # Runtime migrations import uuid v7 from the database package, so copy the
 # database package's resolved install instead of the repo-root hoisted version.
 COPY --from=installer /app/packages/database/node_modules/uuid ./node_modules/uuid
