@@ -62,7 +62,15 @@ run_with_timeout 60 "SAML database setup" node packages/database/dist/scripts/cr
 # Script is a no-op when FORMBRICKS_BOOTSTRAP_EMAIL is unset, so the container
 # falls through to the interactive /setup/intro flow as before.
 echo "🚀 Running Formbricks bootstrap (no-op if FORMBRICKS_BOOTSTRAP_* env not set)..."
-run_with_timeout 60 "Formbricks bootstrap" node packages/database/dist/scripts/bootstrap-admin-and-org.js
+## Run the CJS bundle, not the ESM .js. packages/database is `"type":
+## "module"`, so the .js file is ESM where `require`/`module` don't
+## exist — the script's `isDirectInvocation()` guard returns false in
+## ESM and `main()` never runs, exiting cleanly with no work done. The
+## .cjs bundle preserves require.main === module semantics. Proper fix
+## is to teach the script ESM-aware self-detection (import.meta.url
+## comparison), tracked as a follow-up; this entrypoint patch is the
+## minimal change to make the bootstrap actually run.
+run_with_timeout 60 "Formbricks bootstrap" node packages/database/dist/scripts/bootstrap-admin-and-org.cjs
 
 echo "✅ Database setup completed"
 echo "🚀 Starting Next.js server..."
