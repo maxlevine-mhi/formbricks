@@ -442,6 +442,24 @@ const parsedEnv = createEnv({
     SESSION_MAX_AGE: process.env.SESSION_MAX_AGE,
     SENTRY_ENVIRONMENT: process.env.SENTRY_ENVIRONMENT,
   },
+  // Override @t3-oss/env-nextjs's default error handler so the failing
+  // field name + issue is in the message — otherwise operators see only
+  // "Invalid environment variables" with no hint which of ~80 vars is
+  // the culprit, and have to grep the schema.
+  onValidationError: (issues) => {
+    const formatted = issues
+      .map((issue) => {
+        const segments = (issue.path ?? []).map((segment) =>
+          typeof segment === "object" && segment !== null && "key" in segment
+            ? String(segment.key)
+            : String(segment)
+        );
+        const fieldName = segments.length > 0 ? segments.join(".") : "(root)";
+        return `  - ${fieldName}: ${issue.message}`;
+      })
+      .join("\n");
+    throw new Error(`Invalid environment variables:\n${formatted}`);
+  },
 });
 
 export const env = ZAIConfigurationEnv.superRefine(validateActiveAIProviderConfiguration)

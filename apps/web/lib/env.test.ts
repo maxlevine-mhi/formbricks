@@ -187,6 +187,17 @@ describe("env", () => {
     await expect(import("./env")).rejects.toThrow("Invalid environment variables");
   });
 
+  test("validation error message names the failing field", async () => {
+    // Without this, operators see only "Invalid environment variables"
+    // with no hint which of ~80 vars is the culprit. ENCRYPTION_KEY is
+    // required + non-defaulted, so missing it is the simplest trigger.
+    setTestEnv({
+      ENCRYPTION_KEY: undefined,
+    });
+
+    await expect(import("./env")).rejects.toThrow(/ENCRYPTION_KEY/);
+  });
+
   test("uses the default survey scheduling configuration when env vars are not set", async () => {
     setTestEnv({
       NEXT_PUBLIC_SURVEY_SCHEDULING_LOCAL_HOUR: undefined,
