@@ -83,7 +83,12 @@ const readBootstrapConfig = (env: NodeJS.ProcessEnv): BootstrapConfig => {
   const rawPassword = env[PASSWORD_VAR];
   const rawOrgName = env[ORG_NAME_VAR];
 
-  if (rawEmail === undefined || rawName === undefined || rawPassword === undefined || rawOrgName === undefined) {
+  if (
+    rawEmail === undefined ||
+    rawName === undefined ||
+    rawPassword === undefined ||
+    rawOrgName === undefined
+  ) {
     // `collectMissingVars` already covers this; the narrow keeps the type checker happy.
     throw new Error("internal error: required env vars not set after presence check");
   }
@@ -246,14 +251,15 @@ const main = async (): Promise<void> => {
   }
 };
 
-// Avoid running side-effects when imported by the test suite.
-const isDirectInvocation = (): boolean => {
-  if (typeof require !== "undefined" && typeof module !== "undefined") {
-    // CommonJS path used by the bundled `dist/scripts/bootstrap-admin-and-org.cjs`.
-    return require.main === module;
-  }
-  return false;
-};
+// Avoid running side-effects when imported by the test suite. Originally
+// gated on `require.main === module`, but the bundler produces both .cjs
+// AND .js (ESM, because packages/database is `"type": "module"`) and the
+// ESM path has no `require`/`module`, so the guard silently returned false
+// and `main()` never ran — script exited 0 doing nothing. Switching to an
+// env-driven gate is robust across module systems: the docker entrypoint
+// sets FORMBRICKS_BOOTSTRAP_INVOKE=1 just before invoking the script, and
+// tests never set it.
+const isDirectInvocation = (): boolean => process.env.FORMBRICKS_BOOTSTRAP_INVOKE === "1";
 
 if (isDirectInvocation()) {
   main()
@@ -263,7 +269,10 @@ if (isDirectInvocation()) {
     .catch((error: unknown) => {
       // Provide a clear failure mode for the container entrypoint.
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        logger.error({ code: error.code, message: error.message }, "Formbricks bootstrap failed (Prisma error)");
+        logger.error(
+          { code: error.code, message: error.message },
+          "Formbricks bootstrap failed (Prisma error)"
+        );
       } else if (error instanceof Error) {
         logger.error({ message: error.message }, "Formbricks bootstrap failed");
       } else {
