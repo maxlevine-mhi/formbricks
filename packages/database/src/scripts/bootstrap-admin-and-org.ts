@@ -251,15 +251,36 @@ const main = async (): Promise<void> => {
   }
 };
 
-// Avoid running side-effects when imported by the test suite. Originally
-// gated on `require.main === module`, but the bundler produces both .cjs
-// AND .js (ESM, because packages/database is `"type": "module"`) and the
-// ESM path has no `require`/`module`, so the guard silently returned false
-// and `main()` never ran — script exited 0 doing nothing. Switching to an
-// env-driven gate is robust across module systems: the docker entrypoint
-// sets FORMBRICKS_BOOTSTRAP_INVOKE=1 just before invoking the script, and
-// tests never set it.
-const isDirectInvocation = (): boolean => process.env.FORMBRICKS_BOOTSTRAP_INVOKE === "1";
+// Avoid running side-effects when imported by the test suite. The bundler
+// emits both a CJS (.cjs) bundle and an ESM (.js) bundle because
+// packages/database is `"type": "module"`. Each module system exposes
+// a different way to ask "am I the entrypoint?":
+//   - CJS: `require.main === module`.
+//   - ESM: compare `import.meta.url` to `process.argv[1]` (resolved to a
+//     file:// URL).
+// Tests import the module from vitest (which is neither path), so neither
+// branch fires and `main()` stays dormant.
+const isDirectInvocation = (): boolean => {
+  // ESM path first — bundled .js entry. `import.meta.url` is the
+  // script's own file:// URL; `process.argv[1]` is the path the user
+  // passed to `node`. They match when the script was the entrypoint.
+  // Tests import the module from vitest (different argv[1]) so this
+  // returns false there.
+  if (typeof import.meta !== "undefined" && typeof import.meta.url === "string") {
+    const argv1 = process.argv[1];
+    if (argv1) {
+      const entrypointUrl = new URL(`file://${argv1}`).href;
+      return import.meta.url === entrypointUrl;
+    }
+    return false;
+  }
+  // CJS fallback — bundled .cjs entry. `require.main === module` is
+  // the canonical Node self-detection in CommonJS.
+  if (typeof require !== "undefined" && typeof module !== "undefined") {
+    return require.main === module;
+  }
+  return false;
+};
 
 if (isDirectInvocation()) {
   main()

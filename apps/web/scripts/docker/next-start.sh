@@ -62,13 +62,11 @@ run_with_timeout 60 "SAML database setup" node packages/database/dist/scripts/cr
 # Script is a no-op when FORMBRICKS_BOOTSTRAP_EMAIL is unset, so the container
 # falls through to the interactive /setup/intro flow as before.
 echo "🚀 Running Formbricks bootstrap (no-op if FORMBRICKS_BOOTSTRAP_* env not set)..."
-## Gate the script on FORMBRICKS_BOOTSTRAP_INVOKE=1 rather than on
-## require.main === module. The bundler produces both .cjs and .js
-## (packages/database is `"type": "module"`), and the ESM .js path has
-## no `require`, so a module-system check silently fails for half the
-## bundles. Env-var gating is robust across both — test suites that
-## import the module never set this var.
-FORMBRICKS_BOOTSTRAP_INVOKE=1 run_with_timeout 60 "Formbricks bootstrap" node packages/database/dist/scripts/bootstrap-admin-and-org.cjs
+## The .cjs bundle is invoked rather than .js so the script's
+## require.main === module self-detection lands on the CJS branch
+## (packages/database emits both bundle formats; the script's
+## isDirectInvocation covers both, but CJS is the simpler path).
+run_with_timeout 60 "Formbricks bootstrap" node packages/database/dist/scripts/bootstrap-admin-and-org.cjs
 
 echo "✅ Database setup completed"
 echo "🚀 Starting Next.js server..."
